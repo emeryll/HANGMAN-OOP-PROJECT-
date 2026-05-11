@@ -23,7 +23,7 @@ public class HangmanFXPro extends Application {
     private Map<String, Deque<String>> recentWordsByCategory = new HashMap<>();
     private String word;
     private char[] guessed;
-    private int lives = 4;
+    private int lives = 6;
 
     private HBox wordBox;
     private Label livesLabel;
@@ -40,8 +40,10 @@ public class HangmanFXPro extends Application {
 
     private int currentPlayerIndex = 0;
     private int roundsPlayed = 0;
-    private int maxRounds = 5;
+    private int maxRounds = 6;
     private int[] playerScores;
+    private int wins = 0;
+    private int losses = 0;
 
    //  private AudioClip correctSound;
    // private AudioClip wrongSound;
@@ -318,6 +320,9 @@ public class HangmanFXPro extends Application {
         currentPlayerIndex = 0;
         roundsPlayed = 0;
         playerScores = new int[playerNames.size()];
+        wins = 0;
+        losses = 0;
+        resetWordHistory();
 
         currentPlayerLabel = new Label();
         currentPlayerLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
@@ -362,7 +367,11 @@ public class HangmanFXPro extends Application {
         resetBtn.setOnMouseExited(e -> resetBtn.setStyle(ghostBtn()));
         resetBtn.setOnAction(e -> {
             currentPlayerIndex = 0;
+            roundsPlayed = 0;
             playerScores = new int[playerNames.size()];
+            wins = 0;
+            losses = 0;
+            resetWordHistory();
             startGame();
         });
 
@@ -580,38 +589,36 @@ public class HangmanFXPro extends Application {
         if (String.valueOf(guessed).equals(word)) {
             int earned = lives * 10;
             playerScores[currentPlayerIndex] += earned;
-            // if (winSound != null) winSound.play();
+            wins++;
+            roundsPlayed++;
+
             showAlert(currentName + " guessed it! +" + earned + " points");
-
-            roundsPlayed++;
-
-            if (roundsPlayed >= maxRounds) {
-                showGameOver();
-                return;
-            }
-
-            currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
-            startGame();
         } else if (lives == 0) {
-            // if (loseSound != null) loseSound.play();
             showAlert(currentName + " ran out of lives! Word was: " + word);
-
+            losses++;
             roundsPlayed++;
-
-            if (roundsPlayed >= maxRounds) {
-                showGameOver();
-                return;
-            }
-
-            currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
-            startGame();
+        } else {
+            return;
         }
+
+        if (roundsPlayed >= maxRounds) {
+            showGameOver();
+            return;
+        }
+
+        currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
+        startGame();
     }
 
     private void showAlert(String msg) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setContentText(msg);
         alert.showAndWait();
+    }
+
+    private void resetWordHistory() {
+        wordBags.clear();
+        recentWordsByCategory.clear();
     }
 
     // ─── DRAWING + ANIMATION ─────────────────────────────────────────────────
@@ -696,8 +703,8 @@ public class HangmanFXPro extends Application {
 
     private String heartsDisplay(int remaining) {
         String filled = "♥ ".repeat(remaining).trim();
-        String empty  = "♡ ".repeat(4 - remaining).trim();
-        return (filled + (remaining > 0 && remaining < 4 ? " " : "") + empty).trim();
+        String empty  = "♡ ".repeat(6 - remaining).trim();
+        return (filled + (remaining > 0 && remaining < 6 ? " " : "") + empty).trim();
     }
 
     private Button makeBackButton() {
@@ -745,7 +752,19 @@ public class HangmanFXPro extends Application {
         result.setAlignment(Pos.CENTER);
         result.setWrapText(true);
 
-        Label ending = new Label("The man is free.");
+        String endingText;
+
+        if (losses == maxRounds) {
+            endingText = "The man has been hanged.";
+        } else if (losses > wins) {
+            endingText = "The man is freed, but tired. Do better.";
+        } else if (wins > losses) {
+            endingText = "The man is freed!";
+        } else {
+            endingText = "The man is freed....Barely.";
+        }
+
+        Label ending = new Label(endingText);
         ending.setFont(Font.font("Arial", FontWeight.BOLD, 20));
         ending.setTextFill(Color.web("#66cc88"));
 
