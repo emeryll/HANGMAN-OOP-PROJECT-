@@ -612,23 +612,26 @@ public class HangmanFXPro extends Application {
             int earned = lives * 10;
             playerScores[currentPlayerIndex] += earned;
             wins++;
-            roundsPlayed++;
-
             showAlert(currentName + " guessed it! +" + earned + " points");
         } else if (lives == 0) {
             showAlert(currentName + " ran out of lives! Word was: " + word);
             losses++;
-            roundsPlayed++;
         } else {
             return;
         }
 
-        if (roundsPlayed >= maxRounds) {
-            showGameOver();
-            return;
+        boolean lastPlayerOfRound = (currentPlayerIndex == playerNames.size() - 1);
+        currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
+
+        if (lastPlayerOfRound) {
+            // All players finished their turn — the round is now complete
+            roundsPlayed++;
+            if (roundsPlayed >= maxRounds) {
+                showGameOver();
+                return;
+            }
         }
 
-        currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
         startGame();
     }
 
