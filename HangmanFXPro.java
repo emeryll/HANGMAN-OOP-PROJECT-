@@ -28,6 +28,7 @@ public class HangmanFXPro extends Application {
     private HBox wordBox;
     private Label livesLabel;
     private Label currentPlayerLabel;
+    private Label roundLabel;
     private Label[] playerScoreLabels;
 
     private Pane drawingPane;
@@ -40,7 +41,7 @@ public class HangmanFXPro extends Application {
 
     private int currentPlayerIndex = 0;
     private int roundsPlayed = 0;
-    private int maxRounds = 6;
+    private int maxRounds = 4;
     private int[] playerScores;
     private int wins = 0;
     private int losses = 0;
@@ -50,12 +51,12 @@ public class HangmanFXPro extends Application {
    // private AudioClip winSound;
    // private AudioClip loseSound;
 
-    private static final String BG       = "#1a1a2e";
-    private static final String SURFACE  = "#16213e";
-    private static final String ACCENT   = "#e94560";
-    private static final String ACCENT_D = "#c73652";
-    private static final String BTN_DARK = "#2a2a45";
-    private static final String BTN_HOVER= "#38385e";
+    private static final String BG       = "#0f172a";
+    private static final String SURFACE  = "#1e293b";
+    private static final String ACCENT   = "#38bdf8";
+    private static final String ACCENT_D = "#0ea5e9";
+    private static final String BTN_DARK = "#334155";
+    private static final String BTN_HOVER= "#475569";
 
     // private AudioClip loadAudio(String fileName) {
        // try {
@@ -93,7 +94,7 @@ public class HangmanFXPro extends Application {
 
         Label subtitleLabel = new Label("— The Word Guessing Game —");
         subtitleLabel.setFont(Font.font("Arial", 15));
-        subtitleLabel.setTextFill(Color.web("#888888"));
+        subtitleLabel.setTextFill(Color.web("#cbd5e1"));
 
         Pane decoHangman = makeDecoHangman();
 
@@ -159,7 +160,7 @@ public class HangmanFXPro extends Application {
 
         Label hint = new Label("Select a word category to play");
         hint.setFont(Font.font("Arial", 13));
-        hint.setTextFill(Color.web("#888888"));
+        hint.setTextFill(Color.web("#cbd5e1"));
 
         ComboBox<String> categoryDropdown = new ComboBox<>();
         categoryDropdown.getItems().addAll("Vegetables", "Animals", "Fruits");
@@ -175,6 +176,22 @@ public class HangmanFXPro extends Application {
             "-fx-border-radius: 6;" +
             "-fx-background-radius: 6;"
         );
+        categoryDropdown.setButtonCell(new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                setStyle("-fx-background-color: " + SURFACE + "; -fx-text-fill: white;");
+            }
+        });
+        categoryDropdown.setCellFactory(listView -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty ? null : item);
+                setStyle("-fx-background-color: " + SURFACE + "; -fx-text-fill: white;");
+            }
+        });
 
         Button nextBtn = new Button("Next  →");
         nextBtn.setPrefWidth(180);
@@ -217,7 +234,7 @@ public class HangmanFXPro extends Application {
 
         Label categoryLabel = new Label("Category: " + selectedCategory);
         categoryLabel.setFont(Font.font("Arial", 13));
-        categoryLabel.setTextFill(Color.web("#888888"));
+        categoryLabel.setTextFill(Color.web("#cbd5e1"));
 
         TextField nameField = new TextField();
         nameField.setPromptText("Enter player name...");
@@ -258,8 +275,8 @@ public class HangmanFXPro extends Application {
                 errorLabel.setText("Please enter a name.");
                 return;
             }
-            if (playerNames.size() >= 2) {
-                errorLabel.setText("Maximum 2 players allowed.");
+            if (playerNames.size() >= 4) {
+                errorLabel.setText("Maximum 4 players allowed.");
                 return;
             }
             if (playerNames.contains(name)) {
@@ -297,7 +314,7 @@ public class HangmanFXPro extends Application {
         backBtn.setOnAction(e -> showCategorySelection());
 
         Separator sep = new Separator();
-        sep.setStyle("-fx-background-color: #333355;");
+        sep.setStyle("-fx-background-color: #475569;");
 
         VBox card = new VBox(14, titleLabel, categoryLabel, inputRow, errorLabel, playerList, sep, proceedBtn, backBtn);
         card.setAlignment(Pos.CENTER);
@@ -328,6 +345,10 @@ public class HangmanFXPro extends Application {
         currentPlayerLabel.setFont(Font.font("Arial", FontWeight.BOLD, 18));
         currentPlayerLabel.setTextFill(Color.web(ACCENT));
 
+        roundLabel = new Label();
+        roundLabel.setFont(Font.font("Arial", FontWeight.NORMAL, 13));
+        roundLabel.setTextFill(Color.web("#94a3b8"));
+
         wordBox = new HBox(10);
         wordBox.setAlignment(Pos.CENTER);
         wordBox.setPadding(new Insets(6, 0, 6, 0));
@@ -338,9 +359,9 @@ public class HangmanFXPro extends Application {
 
         Label categoryLabel = new Label("Category: " + selectedCategory);
         categoryLabel.setFont(Font.font("Arial", 12));
-        categoryLabel.setTextFill(Color.web("#666688"));
+        categoryLabel.setTextFill(Color.web("#94a3b8"));
 
-        VBox topBox = new VBox(4, categoryLabel, currentPlayerLabel, wordBox, livesLabel);
+        VBox topBox = new VBox(4, categoryLabel, currentPlayerLabel, roundLabel, wordBox, livesLabel);
         topBox.setAlignment(Pos.CENTER);
         topBox.setPadding(new Insets(12, 10, 8, 10));
         topBox.setStyle("-fx-background-color: " + SURFACE + ";");
@@ -405,7 +426,7 @@ public class HangmanFXPro extends Application {
     private VBox buildScoresPanel() {
         Label title = new Label("SCORES");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 11));
-        title.setTextFill(Color.web("#666688"));
+        title.setTextFill(Color.web("#94a3b8"));
 
         VBox panel = new VBox(12, title);
         panel.setPadding(new Insets(14, 16, 14, 16));
@@ -429,7 +450,7 @@ public class HangmanFXPro extends Application {
             if (i == currentPlayerIndex) {
                 playerScoreLabels[i].setStyle("-fx-font-weight: bold; -fx-text-fill: " + ACCENT + ";");
             } else {
-                playerScoreLabels[i].setStyle("-fx-text-fill: #555577;");
+                playerScoreLabels[i].setStyle("-fx-text-fill: #94a3b8;");
             }
         }
     }
@@ -446,6 +467,7 @@ public class HangmanFXPro extends Application {
 
         String currentName = playerNames.get(currentPlayerIndex);
         currentPlayerLabel.setText("► " + currentName + "'s Turn");
+        roundLabel.setText("Round " + (roundsPlayed + 1) + " of " + maxRounds);
 
         refreshScoresPanel();
 
@@ -573,7 +595,7 @@ public class HangmanFXPro extends Application {
         tile.setPrefHeight(52);
         tile.setAlignment(Pos.BOTTOM_CENTER);
 
-        String lineColor = revealed ? "#e94560" : "#555577";
+        String lineColor = revealed ? "#38bdf8" : "#94a3b8";
         tile.setStyle(
             "-fx-background-color: transparent;" +
             "-fx-border-color: transparent transparent " + lineColor + " transparent;" +
@@ -686,11 +708,11 @@ public class HangmanFXPro extends Application {
     }
 
     private String ghostBtn() {
-        return "-fx-background-color: transparent; -fx-text-fill: #aaaaaa; -fx-border-color: #444466; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;";
+        return "-fx-background-color: transparent; -fx-text-fill: #cbd5e1; -fx-border-color: #334155; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;";
     }
 
     private String ghostBtnHover() {
-        return "-fx-background-color: #2a2a45; -fx-text-fill: white; -fx-border-color: #666688; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;";
+        return "-fx-background-color: #334155; -fx-text-fill: white; -fx-border-color: #94a3b8; -fx-border-radius: 6; -fx-background-radius: 6; -fx-cursor: hand;";
     }
 
     private String letterBtn() {
@@ -725,32 +747,50 @@ public class HangmanFXPro extends Application {
     // ─── GAME OVER SCREEN ───────────────────────────────────────────────────
 
     private void showGameOver() {
-        int bestScore = Integer.MIN_VALUE;
-        List<String> winners = new ArrayList<>();
-
-        for (int i = 0; i < playerNames.size(); i++) {
-            if (playerScores[i] > bestScore) {
-                bestScore = playerScores[i];
-                winners.clear();
-                winners.add(playerNames.get(i));
-            } else if (playerScores[i] == bestScore) {
-                winners.add(playerNames.get(i));
-            }
-        }
-
         Label title = new Label("GAME OVER");
         title.setFont(Font.font("Arial", FontWeight.BOLD, 32));
         title.setTextFill(Color.WHITE);
 
-        String winnerText = (winners.size() == 1)
-                ? "Winner: " + winners.get(0)
-                : "Tie between: " + String.join(", ", winners);
+        javafx.scene.Node resultNode;
+        if (playerNames.size() == 1) {
+            Label finalScore = new Label("Final Score: " + playerScores[0]);
+            finalScore.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+            finalScore.setTextFill(Color.web("#ffffff"));
 
-        Label result = new Label(winnerText + "\nScore: " + bestScore);
-        result.setFont(Font.font("Arial", 18));
-        result.setTextFill(Color.web("#cccccc"));
-        result.setAlignment(Pos.CENTER);
-        result.setWrapText(true);
+            Label summary = new Label("Nice work! Try again to beat your score.");
+            summary.setFont(Font.font("Arial", 14));
+            summary.setTextFill(Color.web("#94a3b8"));
+            summary.setAlignment(Pos.CENTER);
+            summary.setWrapText(true);
+
+            VBox singleBox = new VBox(8, finalScore, summary);
+            singleBox.setAlignment(Pos.CENTER);
+            resultNode = singleBox;
+        } else {
+            List<Integer> ranking = new ArrayList<>();
+            for (int i = 0; i < playerNames.size(); i++) {
+                ranking.add(i);
+            }
+            ranking.sort((a, b) -> Integer.compare(playerScores[b], playerScores[a]));
+
+            StringBuilder rankingText = new StringBuilder("Final Ranking:\n");
+            for (int i = 0; i < ranking.size(); i++) {
+                int idx = ranking.get(i);
+                rankingText.append(i + 1)
+                        .append(". ")
+                        .append(playerNames.get(idx))
+                        .append(" — ")
+                        .append(playerScores[idx])
+                        .append(" pts\n");
+            }
+
+            Label rankingLabel = new Label(rankingText.toString().trim());
+            rankingLabel.setFont(Font.font("Arial", 16));
+            rankingLabel.setTextFill(Color.web("#cccccc"));
+            rankingLabel.setAlignment(Pos.CENTER);
+            rankingLabel.setWrapText(true);
+            resultNode = rankingLabel;
+        }
 
         String endingText;
 
@@ -811,7 +851,7 @@ public class HangmanFXPro extends Application {
         menu.setStyle(ghostBtn());
         menu.setOnAction(e -> showMainMenu());
 
-        VBox box = new VBox(18, title, artBox, result, restart, menu);
+        VBox box = new VBox(18, title, artBox, resultNode, restart, menu);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(30));
         box.setStyle("-fx-background-color: " + SURFACE + ";");
