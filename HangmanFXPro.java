@@ -23,7 +23,7 @@ public class HangmanFXPro extends Application {
     private Map<String, Deque<String>> recentWordsByCategory = new HashMap<>();
     private String word;
     private char[] guessed;
-    private int lives = 6;
+    private int lives = 4;
 
     private HBox wordBox;
     private Label livesLabel;
@@ -40,7 +40,7 @@ public class HangmanFXPro extends Application {
 
     private int currentPlayerIndex = 0;
     private int roundsPlayed = 0;
-    private int maxRounds = 10;
+    private int maxRounds = 5;
     private int[] playerScores;
 
    //  private AudioClip correctSound;
@@ -696,8 +696,8 @@ public class HangmanFXPro extends Application {
 
     private String heartsDisplay(int remaining) {
         String filled = "♥ ".repeat(remaining).trim();
-        String empty  = "♡ ".repeat(6 - remaining).trim();
-        return (filled + (remaining > 0 && remaining < 6 ? " " : "") + empty).trim();
+        String empty  = "♡ ".repeat(4 - remaining).trim();
+        return (filled + (remaining > 0 && remaining < 4 ? " " : "") + empty).trim();
     }
 
     private Button makeBackButton() {
@@ -714,7 +714,8 @@ public class HangmanFXPro extends Application {
     public static void main(String[] args) {
         launch();
     }
-}
+
+    // ─── GAME OVER SCREEN ───────────────────────────────────────────────────
 
     private void showGameOver() {
         int bestScore = Integer.MIN_VALUE;
@@ -744,6 +745,40 @@ public class HangmanFXPro extends Application {
         result.setAlignment(Pos.CENTER);
         result.setWrapText(true);
 
+        Label ending = new Label("The man is free.");
+        ending.setFont(Font.font("Arial", FontWeight.BOLD, 20));
+        ending.setTextFill(Color.web("#66cc88"));
+
+        Pane freedomArt = new Pane();
+        freedomArt.setPrefSize(120, 120);
+
+        Circle head = new Circle(60, 30, 12);
+        head.setFill(Color.TRANSPARENT);
+        head.setStroke(Color.web("#66cc88"));
+        head.setStrokeWidth(2);
+
+        Line body = new Line(60, 42, 60, 80);
+        body.setStroke(Color.web("#66cc88"));
+        body.setStrokeWidth(2);
+
+        Line leftArm = new Line(60, 55, 40, 65);
+        Line rightArm = new Line(60, 55, 80, 65);
+        Line leftLeg = new Line(60, 80, 45, 105);
+        Line rightLeg = new Line(60, 80, 75, 105);
+
+        for (Line l : new Line[]{leftArm, rightArm, leftLeg, rightLeg}) {
+            l.setStroke(Color.web("#66cc88"));
+            l.setStrokeWidth(2);
+        }
+
+        Circle smile = new Circle(60, 35, 4);
+        smile.setFill(Color.web("#66cc88"));
+
+        freedomArt.getChildren().addAll(head, body, leftArm, rightArm, leftLeg, rightLeg, smile);
+
+        VBox artBox = new VBox(8, freedomArt, ending);
+        artBox.setAlignment(Pos.CENTER);
+
         Button restart = new Button("Play Again");
         restart.setStyle(accentBtn());
         restart.setOnAction(e -> {
@@ -757,7 +792,7 @@ public class HangmanFXPro extends Application {
         menu.setStyle(ghostBtn());
         menu.setOnAction(e -> showMainMenu());
 
-        VBox box = new VBox(18, title, result, restart, menu);
+        VBox box = new VBox(18, title, artBox, result, restart, menu);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(30));
         box.setStyle("-fx-background-color: " + SURFACE + ";");
@@ -767,3 +802,4 @@ public class HangmanFXPro extends Application {
 
         primaryStage.setScene(new Scene(root, 700, 450));
     }
+}
