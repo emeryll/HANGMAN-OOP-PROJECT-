@@ -5,7 +5,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.media.AudioClip;
+// import javafx.scene.media.AudioClip;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
 import javafx.scene.text.Font;
@@ -18,6 +18,9 @@ import java.util.*;
 public class HangmanFXPro extends Application {
 
     private Map<String, String[]> categories = new HashMap<>();
+    private Random random = new Random();
+    private Map<String, List<String>> wordBags = new HashMap<>();
+    private Map<String, Deque<String>> recentWordsByCategory = new HashMap<>();
     private String word;
     private char[] guessed;
     private int lives = 6;
@@ -33,15 +36,17 @@ public class HangmanFXPro extends Application {
 
     private Stage primaryStage;
     private List<String> playerNames = new ArrayList<>();
-    private String selectedCategory = "Programming";
+    private String selectedCategory = "Vegetables";
 
     private int currentPlayerIndex = 0;
+    private int roundsPlayed = 0;
+    private int maxRounds = 10;
     private int[] playerScores;
 
-    private AudioClip correctSound;
-    private AudioClip wrongSound;
-    private AudioClip winSound;
-    private AudioClip loseSound;
+   //  private AudioClip correctSound;
+   // private AudioClip wrongSound;
+   // private AudioClip winSound;
+   // private AudioClip loseSound;
 
     private static final String BG       = "#1a1a2e";
     private static final String SURFACE  = "#16213e";
@@ -50,27 +55,27 @@ public class HangmanFXPro extends Application {
     private static final String BTN_DARK = "#2a2a45";
     private static final String BTN_HOVER= "#38385e";
 
-    private AudioClip loadAudio(String fileName) {
-        try {
-            return new AudioClip("file:" + fileName);
-        } catch (Exception e) {
-            System.out.println("Audio file " + fileName + " not found, sound disabled.");
-            return null;
-        }
-    }
+    // private AudioClip loadAudio(String fileName) {
+       // try {
+       //     return new AudioClip("file:" + fileName);
+       // } catch (Exception e) {
+       //     System.out.println("Audio file " + fileName + " not found, sound disabled.");
+       //     return null;
+      //  }
+  //  }
 
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
 
-        correctSound = loadAudio("correct.wav");
-        wrongSound = loadAudio("wrong.wav");
-        winSound = loadAudio("win.wav");
-        loseSound = loadAudio("lose.wav");
+       //  correctSound = loadAudio("correct.wav");
+       //  wrongSound = loadAudio("wrong.wav");
+       //  winSound = loadAudio("win.wav");
+       //  loseSound = loadAudio("lose.wav");
 
-        categories.put("Programming", new String[]{"JAVA", "CLASS", "OBJECT"});
-        categories.put("Animals", new String[]{"DOG", "CAT", "ELEPHANT"});
-        categories.put("Fruits", new String[]{"APPLE", "MANGO", "BANANA"});
+        categories.put("Vegetables", new String[]{"CARROT", "POTATO", "ONION", "TOMATO", "CUCUMBER", "BROCCOLI", "SPINACH"});
+        categories.put("Animals", new String[]{"DOG", "CAT", "ELEPHANT", "GIRAFFE", "KANGAROO", "PENGUIN", "DOLPHIN"});
+        categories.put("Fruits", new String[]{"APPLE", "MANGO", "BANANA", "ORANGE", "PINEAPPLE", "STRAWBERRY", "WATERMELON"});
 
         stage.setTitle("Hangman Pro");
         showMainMenu();
@@ -155,8 +160,8 @@ public class HangmanFXPro extends Application {
         hint.setTextFill(Color.web("#888888"));
 
         ComboBox<String> categoryDropdown = new ComboBox<>();
-        categoryDropdown.getItems().addAll("Programming", "Animals", "Fruits");
-        categoryDropdown.setValue("Programming");
+        categoryDropdown.getItems().addAll("Vegetables", "Animals", "Fruits");
+        categoryDropdown.setValue("Vegetables");
         categoryDropdown.setPrefWidth(260);
         categoryDropdown.setPrefHeight(42);
         categoryDropdown.setStyle(
@@ -311,6 +316,7 @@ public class HangmanFXPro extends Application {
 
     private void launchGame() {
         currentPlayerIndex = 0;
+        roundsPlayed = 0;
         playerScores = new int[playerNames.size()];
 
         currentPlayerLabel = new Label();
@@ -434,11 +440,11 @@ public class HangmanFXPro extends Application {
 
         refreshScoresPanel();
 
-        String[] words = categories.get(selectedCategory);
-        word = words[new Random().nextInt(words.length)];
+        word = getNextWord();
 
         guessed = new char[word.length()];
         Arrays.fill(guessed, '_');
+        revealHintLetters();
 
         updateWord();
 
@@ -473,18 +479,70 @@ public class HangmanFXPro extends Application {
 
         if (found) {
             btn.setStyle("-fx-background-color: #2d6a3f; -fx-text-fill: #aaffbb; -fx-background-radius: 6;");
-            if (correctSound != null) correctSound.play();
+          //  if (correctSound != null) correctSound.play();
         } else {
             btn.setStyle("-fx-background-color: #6a2d2d; -fx-text-fill: #ffaaaa; -fx-background-radius: 6;");
             lives--;
             livesLabel.setText(heartsDisplay(lives));
-            if (wrongSound != null) wrongSound.play();
+         //   if (wrongSound != null) wrongSound.play();
             drawNextPart();
         }
 
         btn.setDisable(true);
         updateWord();
         checkGame();
+    }
+
+    private String getNextWord() {
+        List<String> bag = wordBags.computeIfAbsent(selectedCategory, key -> new ArrayList<>());
+        Deque<String> recentWords = recentWordsByCategory.computeIfAbsent(selectedCategory, key -> new ArrayDeque<>());
+
+        if (bag.isEmpty()) {
+            bag.addAll(Arrays.asList(categories.get(selectedCategory)));
+            Collections.shuffle(bag, random);
+        }
+
+        int nextIndex = findBestWordIndex(bag, recentWords);
+        String nextWord = bag.remove(nextIndex);
+
+        recentWords.addLast(nextWord);
+        while (recentWords.size() > 2) {
+            recentWords.removeFirst();
+        }
+
+        return nextWord;
+    }
+
+    private int findBestWordIndex(List<String> bag, Deque<String> recentWords) {
+        List<Integer> safeIndexes = new ArrayList<>();
+
+        for (int i = 0; i < bag.size(); i++) {
+            if (!recentWords.contains(bag.get(i))) {
+                safeIndexes.add(i);
+            }
+        }
+
+        if (!safeIndexes.isEmpty()) {
+            return safeIndexes.get(random.nextInt(safeIndexes.size()));
+        }
+
+        return random.nextInt(bag.size());
+    }
+
+    private void revealHintLetters() {
+        int hintCount = word.length() > 3 && random.nextBoolean() ? 2 : 1;
+        List<Integer> positions = new ArrayList<>();
+
+        for (int i = 0; i < word.length(); i++) {
+            positions.add(i);
+        }
+
+        Collections.shuffle(positions, random);
+
+        for (int i = 0; i < hintCount && i < positions.size(); i++) {
+            int position = positions.get(i);
+            guessed[position] = word.charAt(position);
+        }
     }
 
     private void updateWord() {
@@ -522,13 +580,29 @@ public class HangmanFXPro extends Application {
         if (String.valueOf(guessed).equals(word)) {
             int earned = lives * 10;
             playerScores[currentPlayerIndex] += earned;
-            if (winSound != null) winSound.play();
+            // if (winSound != null) winSound.play();
             showAlert(currentName + " guessed it! +" + earned + " points");
+
+            roundsPlayed++;
+
+            if (roundsPlayed >= maxRounds) {
+                showGameOver();
+                return;
+            }
+
             currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
             startGame();
         } else if (lives == 0) {
-            if (loseSound != null) loseSound.play();
+            // if (loseSound != null) loseSound.play();
             showAlert(currentName + " ran out of lives! Word was: " + word);
+
+            roundsPlayed++;
+
+            if (roundsPlayed >= maxRounds) {
+                showGameOver();
+                return;
+            }
+
             currentPlayerIndex = (currentPlayerIndex + 1) % playerNames.size();
             startGame();
         }
@@ -641,3 +715,55 @@ public class HangmanFXPro extends Application {
         launch();
     }
 }
+
+    private void showGameOver() {
+        int bestScore = Integer.MIN_VALUE;
+        List<String> winners = new ArrayList<>();
+
+        for (int i = 0; i < playerNames.size(); i++) {
+            if (playerScores[i] > bestScore) {
+                bestScore = playerScores[i];
+                winners.clear();
+                winners.add(playerNames.get(i));
+            } else if (playerScores[i] == bestScore) {
+                winners.add(playerNames.get(i));
+            }
+        }
+
+        Label title = new Label("GAME OVER");
+        title.setFont(Font.font("Arial", FontWeight.BOLD, 32));
+        title.setTextFill(Color.WHITE);
+
+        String winnerText = (winners.size() == 1)
+                ? "Winner: " + winners.get(0)
+                : "Tie between: " + String.join(", ", winners);
+
+        Label result = new Label(winnerText + "\nScore: " + bestScore);
+        result.setFont(Font.font("Arial", 18));
+        result.setTextFill(Color.web("#cccccc"));
+        result.setAlignment(Pos.CENTER);
+        result.setWrapText(true);
+
+        Button restart = new Button("Play Again");
+        restart.setStyle(accentBtn());
+        restart.setOnAction(e -> {
+            currentPlayerIndex = 0;
+            playerScores = new int[playerNames.size()];
+            roundsPlayed = 0;
+            launchGame();
+        });
+
+        Button menu = new Button("Main Menu");
+        menu.setStyle(ghostBtn());
+        menu.setOnAction(e -> showMainMenu());
+
+        VBox box = new VBox(18, title, result, restart, menu);
+        box.setAlignment(Pos.CENTER);
+        box.setPadding(new Insets(30));
+        box.setStyle("-fx-background-color: " + SURFACE + ";");
+
+        StackPane root = new StackPane(box);
+        root.setStyle("-fx-background-color: " + BG + ";");
+
+        primaryStage.setScene(new Scene(root, 700, 450));
+    }
