@@ -5,14 +5,16 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-// import javafx.scene.media.AudioClip;
+import javax.sound.sampled.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.*;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.File;
 import java.util.*;
 
 public class HangmanFXPro extends Application {
@@ -46,41 +48,78 @@ public class HangmanFXPro extends Application {
     private int wins = 0;
     private int losses = 0;
 
-   //  private AudioClip correctSound;
-   // private AudioClip wrongSound;
-   // private AudioClip winSound;
-   // private AudioClip loseSound;
 
+    private Clip correctSound;
+    private Clip wrongSound;
+    private Clip winSound;
+    private Clip loseSound;
+    private Clip clickSound;
+
+    private enum GameOutcome {
+        NONE,
+        WIN,
+        LOSS,
+        BARELY
+    }
+
+    private GameOutcome lastOutcome = GameOutcome.NONE;
+   
     private static final String BG       = "#0f172a";
     private static final String SURFACE  = "#1e293b";
     private static final String ACCENT   = "#38bdf8";
     private static final String ACCENT_D = "#0ea5e9";
     private static final String BTN_DARK = "#334155";
     private static final String BTN_HOVER= "#475569";
+    private static final int WINDOW_WIDTH = 780;
+    private static final int WINDOW_HEIGHT = 520;
 
-    // private AudioClip loadAudio(String fileName) {
-       // try {
-       //     return new AudioClip("file:" + fileName);
-       // } catch (Exception e) {
-       //     System.out.println("Audio file " + fileName + " not found, sound disabled.");
-       //     return null;
-      //  }
-  //  }
+    private Clip loadAudio(String fileName) {
+        try {
+            File file = new File("sounds/" + fileName);
+
+            if (!file.exists()) {
+                System.out.println("Missing sound: " + file.getPath());
+                return null;
+            }
+
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(file);
+            Clip clip = AudioSystem.getClip();
+            clip.open(audioIn);
+
+            return clip;
+
+        } catch (Exception e) {
+            System.out.println("Sound error: " + fileName + " -> " + e.getMessage());
+            return null;
+        }
+    }
+
+    private void playSound(Clip sound) {
+        if (sound != null) {
+            if (sound.isRunning()) {
+                sound.stop();
+            }
+            sound.setFramePosition(0);
+            sound.start();
+        }
+    }
 
     @Override
     public void start(Stage stage) {
         this.primaryStage = stage;
 
-       //  correctSound = loadAudio("correct.wav");
-       //  wrongSound = loadAudio("wrong.wav");
-       //  winSound = loadAudio("win.wav");
-       //  loseSound = loadAudio("lose.wav");
+        correctSound = loadAudio("correct.wav");
+        wrongSound = loadAudio("wrong.wav");
+        winSound = loadAudio("win.wav");
+        loseSound = loadAudio("lose.wav");
+        clickSound = loadAudio("UIclick.wav");
 
         categories.put("Vegetables", new String[]{"CARROT", "POTATO", "ONION", "TOMATO", "CUCUMBER", "BROCCOLI", "SPINACH"});
         categories.put("Animals", new String[]{"DOG", "CAT", "ELEPHANT", "GIRAFFE", "KANGAROO", "PENGUIN", "DOLPHIN"});
         categories.put("Fruits", new String[]{"APPLE", "MANGO", "BANANA", "ORANGE", "PINEAPPLE", "STRAWBERRY", "WATERMELON"});
 
         stage.setTitle("Hangman Pro");
+        stage.setResizable(false);
         showMainMenu();
         stage.show();
     }
@@ -105,7 +144,10 @@ public class HangmanFXPro extends Application {
         startBtn.setStyle(accentBtn());
         startBtn.setOnMouseEntered(e -> startBtn.setStyle(accentBtnHover()));
         startBtn.setOnMouseExited(e -> startBtn.setStyle(accentBtn()));
-        startBtn.setOnAction(e -> showCategorySelection());
+        startBtn.setOnAction(e -> {
+            playSound(clickSound);
+            showCategorySelection();
+        });
 
         VBox content = new VBox(16, decoHangman, titleLabel, subtitleLabel, startBtn);
         content.setAlignment(Pos.CENTER);
@@ -114,7 +156,7 @@ public class HangmanFXPro extends Application {
         StackPane root = new StackPane(content);
         root.setStyle("-fx-background-color: " + BG + ";");
 
-        primaryStage.setScene(new Scene(root, 700, 500));
+        primaryStage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
     }
 
     private Pane makeDecoHangman() {
@@ -192,6 +234,7 @@ public class HangmanFXPro extends Application {
                 setStyle("-fx-background-color: " + SURFACE + "; -fx-text-fill: white;");
             }
         });
+        categoryDropdown.setOnAction(e -> playSound(clickSound));
 
         Button nextBtn = new Button("Next  →");
         nextBtn.setPrefWidth(180);
@@ -201,12 +244,16 @@ public class HangmanFXPro extends Application {
         nextBtn.setOnMouseEntered(e -> nextBtn.setStyle(accentBtnHover()));
         nextBtn.setOnMouseExited(e -> nextBtn.setStyle(accentBtn()));
         nextBtn.setOnAction(e -> {
+            playSound(clickSound);
             selectedCategory = categoryDropdown.getValue();
             showPlayerSetup();
         });
 
         Button backBtn = makeBackButton();
-        backBtn.setOnAction(e -> showMainMenu());
+        backBtn.setOnAction(e -> {
+            playSound(clickSound);
+            showMainMenu();
+        });
 
         VBox card = new VBox(18, titleLabel, hint, categoryDropdown, nextBtn, backBtn);
         card.setAlignment(Pos.CENTER);
@@ -220,7 +267,7 @@ public class HangmanFXPro extends Application {
         StackPane root = new StackPane(card);
         root.setStyle("-fx-background-color: " + BG + ";");
 
-        primaryStage.setScene(new Scene(root, 700, 420));
+        primaryStage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
     }
 
     // ─── PLAYER SETUP ────────────────────────────────────────────────────────
@@ -270,6 +317,7 @@ public class HangmanFXPro extends Application {
         errorLabel.setFont(Font.font("Arial", 12));
 
         addBtn.setOnAction(e -> {
+            playSound(clickSound);
             String name = nameField.getText().trim();
             if (name.isEmpty()) {
                 errorLabel.setText("Please enter a name.");
@@ -303,6 +351,7 @@ public class HangmanFXPro extends Application {
         proceedBtn.setOnMouseEntered(e -> proceedBtn.setStyle(accentBtnHover()));
         proceedBtn.setOnMouseExited(e -> proceedBtn.setStyle(accentBtn()));
         proceedBtn.setOnAction(e -> {
+            playSound(clickSound);
             if (playerNames.isEmpty()) {
                 errorLabel.setText("Add at least one player to proceed.");
                 return;
@@ -311,7 +360,10 @@ public class HangmanFXPro extends Application {
         });
 
         Button backBtn = makeBackButton();
-        backBtn.setOnAction(e -> showCategorySelection());
+        backBtn.setOnAction(e -> {
+            playSound(clickSound);
+            showCategorySelection();
+        });
 
         Separator sep = new Separator();
         sep.setStyle("-fx-background-color: #475569;");
@@ -328,7 +380,7 @@ public class HangmanFXPro extends Application {
         StackPane root = new StackPane(card);
         root.setStyle("-fx-background-color: " + BG + ";");
 
-        primaryStage.setScene(new Scene(root, 700, 520));
+        primaryStage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
     }
 
     // ─── GAME SCREEN ─────────────────────────────────────────────────────────
@@ -387,6 +439,7 @@ public class HangmanFXPro extends Application {
         resetBtn.setOnMouseEntered(e -> resetBtn.setStyle(ghostBtnHover()));
         resetBtn.setOnMouseExited(e -> resetBtn.setStyle(ghostBtn()));
         resetBtn.setOnAction(e -> {
+            playSound(clickSound);
             currentPlayerIndex = 0;
             roundsPlayed = 0;
             playerScores = new int[playerNames.size()];
@@ -403,7 +456,10 @@ public class HangmanFXPro extends Application {
         menuBtn.setStyle(ghostBtn());
         menuBtn.setOnMouseEntered(e -> menuBtn.setStyle(ghostBtnHover()));
         menuBtn.setOnMouseExited(e -> menuBtn.setStyle(ghostBtn()));
-        menuBtn.setOnAction(e -> showMainMenu());
+        menuBtn.setOnAction(e -> {
+            playSound(clickSound);
+            showMainMenu();
+        });
 
         HBox bottomBar = new HBox(10, resetBtn, menuBtn);
         bottomBar.setAlignment(Pos.CENTER);
@@ -420,7 +476,7 @@ public class HangmanFXPro extends Application {
 
         startGame();
 
-        primaryStage.setScene(new Scene(root, 780, 500));
+        primaryStage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
     }
 
     private VBox buildScoresPanel() {
@@ -510,12 +566,12 @@ public class HangmanFXPro extends Application {
 
         if (found) {
             btn.setStyle("-fx-background-color: #2d6a3f; -fx-text-fill: #aaffbb; -fx-background-radius: 6;");
-          //  if (correctSound != null) correctSound.play();
+            playSound(correctSound);
         } else {
             btn.setStyle("-fx-background-color: #6a2d2d; -fx-text-fill: #ffaaaa; -fx-background-radius: 6;");
             lives--;
             livesLabel.setText(heartsDisplay(lives));
-         //   if (wrongSound != null) wrongSound.play();
+            playSound(wrongSound);
             drawNextPart();
         }
 
@@ -612,10 +668,14 @@ public class HangmanFXPro extends Application {
             int earned = lives * 10;
             playerScores[currentPlayerIndex] += earned;
             wins++;
+
+            lastOutcome = (lives <= 2) ? GameOutcome.BARELY : GameOutcome.WIN;
+
             showAlert(currentName + " guessed it! +" + earned + " points");
         } else if (lives == 0) {
-            showAlert(currentName + " ran out of lives! Word was: " + word);
             losses++;
+            lastOutcome = GameOutcome.LOSS;
+            showAlert(currentName + " ran out of lives! Word was: " + word);
         } else {
             return;
         }
@@ -807,6 +867,21 @@ public class HangmanFXPro extends Application {
             endingText = "The man is freed....Barely.";
         }
 
+        switch (lastOutcome) {
+            case WIN:
+                playSound(winSound);
+                break;
+            case LOSS:
+                playSound(loseSound);
+                break;
+            case BARELY:
+                playSound(winSound);
+                break;
+            default:
+                break;
+        }
+
+
         Label ending = new Label(endingText);
         ending.setFont(Font.font("Arial", FontWeight.BOLD, 20));
         ending.setTextFill(Color.web("#66cc88"));
@@ -844,6 +919,7 @@ public class HangmanFXPro extends Application {
         Button restart = new Button("Play Again");
         restart.setStyle(accentBtn());
         restart.setOnAction(e -> {
+            playSound(clickSound);
             currentPlayerIndex = 0;
             playerScores = new int[playerNames.size()];
             roundsPlayed = 0;
@@ -852,7 +928,10 @@ public class HangmanFXPro extends Application {
 
         Button menu = new Button("Main Menu");
         menu.setStyle(ghostBtn());
-        menu.setOnAction(e -> showMainMenu());
+        menu.setOnAction(e -> {
+            playSound(clickSound);
+            showMainMenu();
+        });
 
         VBox box = new VBox(18, title, artBox, resultNode, restart, menu);
         box.setAlignment(Pos.CENTER);
@@ -862,6 +941,6 @@ public class HangmanFXPro extends Application {
         StackPane root = new StackPane(box);
         root.setStyle("-fx-background-color: " + BG + ";");
 
-        primaryStage.setScene(new Scene(root, 700, 450));
+        primaryStage.setScene(new Scene(root, WINDOW_WIDTH, WINDOW_HEIGHT));
     }
 }
