@@ -128,6 +128,7 @@ public class HangmanFXPro extends Application {
         categories.put("Vegetables", new String[]{"CARROT", "POTATO", "ONION", "TOMATO", "CUCUMBER", "BROCCOLI", "SPINACH"});
         categories.put("Animals", new String[]{"DOG", "CAT", "ELEPHANT", "GIRAFFE", "KANGAROO", "PENGUIN", "DOLPHIN"});
         categories.put("Fruits", new String[]{"APPLE", "MANGO", "BANANA", "ORANGE", "PINEAPPLE", "STRAWBERRY", "WATERMELON"});
+        categories.put("Colors", new String[]{"RED", "BLUE", "GREEN", "YELLOW", "PURPLE", "ORANGE", "BLACK", "WHITE", "PINK", "BROWN"});
 
         stage.setTitle("Hangman Pro");
         stage.setResizable(false);
@@ -216,7 +217,7 @@ public class HangmanFXPro extends Application {
         hint.setTextFill(Color.web("#cbd5e1"));
 
         ComboBox<String> categoryDropdown = new ComboBox<>();
-        categoryDropdown.getItems().addAll("Vegetables", "Animals", "Fruits");
+        categoryDropdown.getItems().addAll("Vegetables", "Animals", "Fruits", "Colors");
         categoryDropdown.setValue("Vegetables");
         categoryDropdown.setPrefWidth(260);
         categoryDropdown.setPrefHeight(42);
@@ -927,20 +928,24 @@ public class HangmanFXPro extends Application {
 
         playOutcomeSound(getOverallOutcome());
 
+        boolean playerWasHanged = losses == maxRounds * playerNames.size();
+        boolean playerIsTired = !playerWasHanged && losses > wins;
+        String artColor = playerWasHanged ? "#ef4444" : (playerIsTired ? "#facc15" : "#66cc88");
+
         Label ending = new Label(endingText);
         ending.setFont(Font.font("Arial", FontWeight.BOLD, 20));
-        ending.setTextFill(Color.web("#66cc88"));
+        ending.setTextFill(Color.web(artColor));
 
         Pane freedomArt = new Pane();
         freedomArt.setPrefSize(120, 120);
 
         Circle head = new Circle(60, 30, 12);
         head.setFill(Color.TRANSPARENT);
-        head.setStroke(Color.web("#66cc88"));
+        head.setStroke(Color.web(artColor));
         head.setStrokeWidth(2);
 
         Line body = new Line(60, 42, 60, 80);
-        body.setStroke(Color.web("#66cc88"));
+        body.setStroke(Color.web(artColor));
         body.setStrokeWidth(2);
 
         Line leftArm = new Line(60, 55, 40, 65);
@@ -949,14 +954,34 @@ public class HangmanFXPro extends Application {
         Line rightLeg = new Line(60, 80, 75, 105);
 
         for (Line l : new Line[]{leftArm, rightArm, leftLeg, rightLeg}) {
-            l.setStroke(Color.web("#66cc88"));
+            l.setStroke(Color.web(artColor));
             l.setStrokeWidth(2);
         }
 
-        Circle smile = new Circle(60, 35, 4);
-        smile.setFill(Color.web("#66cc88"));
+        freedomArt.getChildren().addAll(head, body, leftArm, rightArm, leftLeg, rightLeg);
 
-        freedomArt.getChildren().addAll(head, body, leftArm, rightArm, leftLeg, rightLeg, smile);
+        if (playerWasHanged) {
+            Line xOne = new Line(53, 23, 67, 37);
+            Line xTwo = new Line(67, 23, 53, 37);
+            for (Line l : new Line[]{xOne, xTwo}) {
+                l.setStroke(Color.web(artColor));
+                l.setStrokeWidth(3);
+            }
+            freedomArt.getChildren().addAll(xOne, xTwo);
+        } else if (playerIsTired) {
+            Line leftEye = new Line(53, 28, 57, 28);
+            Line rightEye = new Line(63, 28, 67, 28);
+            Line tiredMouth = new Line(55, 37, 65, 39);
+            for (Line l : new Line[]{leftEye, rightEye, tiredMouth}) {
+                l.setStroke(Color.web(artColor));
+                l.setStrokeWidth(2);
+            }
+            freedomArt.getChildren().addAll(leftEye, rightEye, tiredMouth);
+        } else {
+            Circle smile = new Circle(60, 35, 4);
+            smile.setFill(Color.web(artColor));
+            freedomArt.getChildren().add(smile);
+        }
 
         VBox artBox = new VBox(8, freedomArt, ending);
         artBox.setAlignment(Pos.CENTER);
