@@ -52,6 +52,7 @@ public class HangmanFXPro extends Application {
     private Clip correctSound;
     private Clip wrongSound;
     private Clip winSound;
+    private Clip midWinSound;
     private Clip loseSound;
     private Clip clickSound;
 
@@ -74,11 +75,17 @@ public class HangmanFXPro extends Application {
     private static final int WINDOW_HEIGHT = 520;
 
     private Clip loadAudio(String fileName) {
+        return loadAudio(fileName, true);
+    }
+
+    private Clip loadAudio(String fileName, boolean warnIfMissing) {
         try {
             File file = new File("sounds/" + fileName);
 
             if (!file.exists()) {
-                System.out.println("Missing sound: " + file.getPath());
+                if (warnIfMissing) {
+                    System.out.println("Missing sound: " + file.getPath());
+                }
                 return null;
             }
 
@@ -111,6 +118,10 @@ public class HangmanFXPro extends Application {
         correctSound = loadAudio("correct.wav");
         wrongSound = loadAudio("wrong.wav");
         winSound = loadAudio("win.wav");
+        midWinSound = loadAudio("midwin.wav", false);
+        if (midWinSound == null) {
+            midWinSound = correctSound;
+        }
         loseSound = loadAudio("lose.wav");
         clickSound = loadAudio("UIclick.wav");
 
@@ -564,14 +575,21 @@ public class HangmanFXPro extends Application {
             }
         }
 
+        boolean solvesWord = found && String.valueOf(guessed).equals(word);
+        boolean losesGame = !found && lives == 1;
+
         if (found) {
             btn.setStyle("-fx-background-color: #2d6a3f; -fx-text-fill: #aaffbb; -fx-background-radius: 6;");
-            playSound(correctSound);
+            if (!solvesWord) {
+                playSound(correctSound);
+            }
         } else {
             btn.setStyle("-fx-background-color: #6a2d2d; -fx-text-fill: #ffaaaa; -fx-background-radius: 6;");
             lives--;
             livesLabel.setText(heartsDisplay(lives));
-            playSound(wrongSound);
+            if (!losesGame) {
+                playSound(wrongSound);
+            }
             drawNextPart();
         }
 
@@ -663,6 +681,8 @@ public class HangmanFXPro extends Application {
 
     private void checkGame() {
         String currentName = playerNames.get(currentPlayerIndex);
+        boolean finalTurnOfMatch = currentPlayerIndex == playerNames.size() - 1
+                && roundsPlayed + 1 >= maxRounds;
 
         if (String.valueOf(guessed).equals(word)) {
             int earned = lives * 10;
@@ -670,11 +690,17 @@ public class HangmanFXPro extends Application {
             wins++;
 
             lastOutcome = (lives <= 2) ? GameOutcome.BARELY : GameOutcome.WIN;
+            if (!finalTurnOfMatch) {
+                playOutcomeSound(lastOutcome);
+            }
 
             showAlert(currentName + " guessed it! +" + earned + " points");
         } else if (lives == 0) {
             losses++;
             lastOutcome = GameOutcome.LOSS;
+            if (!finalTurnOfMatch) {
+                playOutcomeSound(lastOutcome);
+            }
             showAlert(currentName + " ran out of lives! Word was: " + word);
         } else {
             return;
@@ -699,6 +725,38 @@ public class HangmanFXPro extends Application {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setContentText(msg);
         alert.showAndWait();
+    }
+
+    private void playOutcomeSound(GameOutcome outcome) {
+        switch (outcome) {
+            case WIN:
+                playSound(winSound);
+                break;
+            case LOSS:
+                playSound(loseSound);
+                break;
+            case BARELY:
+                playSound(midWinSound);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private GameOutcome getOverallOutcome() {
+        int totalTurns = maxRounds * playerNames.size();
+
+        if (losses == totalTurns) {
+            return GameOutcome.LOSS;
+        }
+        if (wins > losses) {
+            return GameOutcome.WIN;
+        }
+        if (losses > wins) {
+            return GameOutcome.BARELY;
+        }
+
+        return GameOutcome.BARELY;
     }
 
     private void resetWordHistory() {
@@ -857,7 +915,7 @@ public class HangmanFXPro extends Application {
 
         String endingText;
 
-        if (losses == maxRounds) {
+        if (losses == maxRounds * playerNames.size()) {
             endingText = "The man has been hanged.";
         } else if (losses > wins) {
             endingText = "The man is freed, but tired. Do better.";
@@ -867,20 +925,7 @@ public class HangmanFXPro extends Application {
             endingText = "The man is freed....Barely.";
         }
 
-        switch (lastOutcome) {
-            case WIN:
-                playSound(winSound);
-                break;
-            case LOSS:
-                playSound(loseSound);
-                break;
-            case BARELY:
-                playSound(winSound);
-                break;
-            default:
-                break;
-        }
-
+        playOutcomeSound(getOverallOutcome());
 
         Label ending = new Label(endingText);
         ending.setFont(Font.font("Arial", FontWeight.BOLD, 20));
