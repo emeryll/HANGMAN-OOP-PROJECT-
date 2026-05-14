@@ -31,7 +31,11 @@ public class HangmanFXPro extends Application {
     private Label livesLabel;
     private Label currentPlayerLabel;
     private Label roundLabel;
+    private Label hintCountLabel;
     private Label[] playerScoreLabels;
+    private Button hintButton;
+    private int[] playerHints;
+    private static final int HINT_LIMIT = 2;
 
     private Pane drawingPane;
     private GridPane lettersPane;
@@ -401,6 +405,8 @@ public class HangmanFXPro extends Application {
         currentPlayerIndex = 0;
         roundsPlayed = 0;
         playerScores = new int[playerNames.size()];
+        playerHints = new int[playerNames.size()];
+        Arrays.fill(playerHints, HINT_LIMIT);
         wins = 0;
         losses = 0;
         resetWordHistory();
@@ -412,6 +418,10 @@ public class HangmanFXPro extends Application {
         roundLabel = new Label();
         roundLabel.setFont(Font.font("Arial", FontWeight.NORMAL, 13));
         roundLabel.setTextFill(Color.web("#94a3b8"));
+
+        hintCountLabel = new Label();
+        hintCountLabel.setFont(Font.font("Arial", FontWeight.NORMAL, 13));
+        hintCountLabel.setTextFill(Color.web("#94a3b8"));
 
         wordBox = new HBox(10);
         wordBox.setAlignment(Pos.CENTER);
@@ -425,7 +435,7 @@ public class HangmanFXPro extends Application {
         categoryLabel.setFont(Font.font("Arial", 12));
         categoryLabel.setTextFill(Color.web("#94a3b8"));
 
-        VBox topBox = new VBox(4, categoryLabel, currentPlayerLabel, roundLabel, wordBox, livesLabel);
+        VBox topBox = new VBox(4, categoryLabel, currentPlayerLabel, roundLabel, hintCountLabel, wordBox, livesLabel);
         topBox.setAlignment(Pos.CENTER);
         topBox.setPadding(new Insets(12, 10, 8, 10));
         topBox.setStyle("-fx-background-color: " + SURFACE + ";");
@@ -455,11 +465,22 @@ public class HangmanFXPro extends Application {
             currentPlayerIndex = 0;
             roundsPlayed = 0;
             playerScores = new int[playerNames.size()];
+            playerHints = new int[playerNames.size()];
+            Arrays.fill(playerHints, HINT_LIMIT);
             wins = 0;
             losses = 0;
             resetWordHistory();
             startGame();
         });
+
+        hintButton = new Button("Hint");
+        hintButton.setPrefWidth(110);
+        hintButton.setPrefHeight(36);
+        hintButton.setFont(Font.font("Arial", 13));
+        hintButton.setStyle(accentBtn());
+        hintButton.setOnMouseEntered(e -> hintButton.setStyle(accentBtnHover()));
+        hintButton.setOnMouseExited(e -> hintButton.setStyle(accentBtn()));
+        hintButton.setOnAction(e -> useHint());
 
         Button menuBtn = new Button("Main Menu");
         menuBtn.setPrefWidth(110);
@@ -473,7 +494,7 @@ public class HangmanFXPro extends Application {
             showMainMenu();
         });
 
-        HBox bottomBar = new HBox(10, resetBtn, menuBtn);
+        HBox bottomBar = new HBox(10, resetBtn, hintButton, menuBtn);
         bottomBar.setAlignment(Pos.CENTER);
         bottomBar.setPadding(new Insets(8));
         bottomBar.setStyle("-fx-background-color: " + SURFACE + ";");
@@ -538,6 +559,7 @@ public class HangmanFXPro extends Application {
         roundLabel.setText("Round " + (roundsPlayed + 1) + " of " + maxRounds);
 
         refreshScoresPanel();
+        updateHintDisplay();
 
         word = getNextWord();
 
@@ -563,6 +585,21 @@ public class HangmanFXPro extends Application {
             lettersPane.add(btn, col, row);
             col++;
             if (col == 7) { col = 0; row++; }
+        }
+
+        // Disable buttons for letters already revealed as hints
+        for (javafx.scene.Node node : lettersPane.getChildren()) {
+            if (node instanceof Button) {
+                Button b = (Button) node;
+                char let = b.getText().charAt(0);
+                for (char g : guessed) {
+                    if (g == let) {
+                        b.setDisable(true);
+                        b.setStyle("-fx-background-color: #2d6a3f; -fx-text-fill: #aaffbb; -fx-background-radius: 6;");
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -596,6 +633,60 @@ public class HangmanFXPro extends Application {
 
         btn.setDisable(true);
         updateWord();
+        checkGame();
+    }
+
+    private void updateHintDisplay() {
+        if (hintCountLabel == null || hintButton == null) {
+            return;
+        }
+        int remaining = playerHints[currentPlayerIndex];
+        hintCountLabel.setText("Hints: " + remaining + " / " + HINT_LIMIT);
+        hintButton.setDisable(remaining <= 0);
+    }
+
+    private void useHint() {
+        if (playerHints[currentPlayerIndex] <= 0) {
+            return;
+        }
+
+        List<Character> remainingLetters = new ArrayList<>();
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            if (guessed[i] == '_') {
+                if (!remainingLetters.contains(c)) {
+                    remainingLetters.add(c);
+                }
+            }
+        }
+
+        if (remainingLetters.isEmpty()) {
+            return;
+        }
+
+        char revealLetter = remainingLetters.get(random.nextInt(remainingLetters.size()));
+        for (int i = 0; i < word.length(); i++) {
+            if (word.charAt(i) == revealLetter) {
+                guessed[i] = revealLetter;
+            }
+        }
+
+        playerHints[currentPlayerIndex]--;
+        updateHintDisplay();
+        updateWord();
+
+        for (javafx.scene.Node node : lettersPane.getChildren()) {
+            if (node instanceof Button) {
+                Button b = (Button) node;
+                if (b.getText().charAt(0) == revealLetter) {
+                    b.setDisable(true);
+                    b.setStyle("-fx-background-color: #2d6a3f; -fx-text-fill: #aaffbb; -fx-background-radius: 6;");
+                    break;
+                }
+            }
+        }
+
+        playSound(correctSound);
         checkGame();
     }
 
@@ -637,17 +728,23 @@ public class HangmanFXPro extends Application {
 
     private void revealHintLetters() {
         int hintCount = word.length() > 3 && random.nextBoolean() ? 2 : 1;
-        List<Integer> positions = new ArrayList<>();
+        List<Character> uniqueLetters = new ArrayList<>();
 
-        for (int i = 0; i < word.length(); i++) {
-            positions.add(i);
+        for (char c : word.toCharArray()) {
+            if (!uniqueLetters.contains(c)) {
+                uniqueLetters.add(c);
+            }
         }
 
-        Collections.shuffle(positions, random);
+        Collections.shuffle(uniqueLetters, random);
 
-        for (int i = 0; i < hintCount && i < positions.size(); i++) {
-            int position = positions.get(i);
-            guessed[position] = word.charAt(position);
+        for (int i = 0; i < hintCount && i < uniqueLetters.size(); i++) {
+            char hintLetter = uniqueLetters.get(i);
+            for (int j = 0; j < word.length(); j++) {
+                if (word.charAt(j) == hintLetter) {
+                    guessed[j] = hintLetter;
+                }
+            }
         }
     }
 
